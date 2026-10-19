@@ -1,0 +1,9 @@
+{
+  "name": "mexc-trend-breakout-bot",
+  "version": "1.0.0",
+  "description": "MEXC futures trend-following and retest-confirmed breakout bot",
+  "main": "server.js",
+  "scripts": {"start": "node server.js", "check": "node --check server.js"},
+  "dependencies": {"ccxt": "^4.5.0", "dotenv": "^16.4.7"},
+  "engines": {"node": ">=20"}
+}
