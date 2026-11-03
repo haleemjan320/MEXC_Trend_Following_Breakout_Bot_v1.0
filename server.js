@@ -19,7 +19,7 @@ const SMART_PULLBACK_PROFILE = String(process.env.SMART_PULLBACK_PROFILE ?? "tru
 
 const MIN_RISK_REWARD = Math.max(
   0.5,
-  Number(process.env.MIN_RISK_REWARD || 1.05)
+  Number(process.env.MIN_RISK_REWARD || (SMART_PULLBACK_PROFILE ? 1.45 : 1.25))
 );
 const MIN_SIGNAL_SCORE = Math.max(50, Math.min(100, Number(process.env.MIN_SIGNAL_SCORE || (SMART_PULLBACK_PROFILE ? 68 : 78))));
 const MIN_SCORE_EDGE = Math.max(0, Number(process.env.MIN_SCORE_EDGE || (SMART_PULLBACK_PROFILE ? 3 : 8)));
@@ -88,7 +88,7 @@ const EARLY_BREAKOUT_MIN_BODY_RATIO = Math.max(0.15, Math.min(0.90, Number(proce
 const EARLY_BREAKOUT_CLOSE_LOCATION_MIN = Math.max(0.50, Math.min(0.95, Number(process.env.EARLY_BREAKOUT_CLOSE_LOCATION_MIN || 0.58)));
 const EARLY_BREAKOUT_MAX_EXTENSION_ATR = Math.max(0.20, Number(process.env.EARLY_BREAKOUT_MAX_EXTENSION_ATR || 1.15));
 const EARLY_BREAKOUT_MIN_SCORE = Math.max(50, Math.min(100, Number(process.env.EARLY_BREAKOUT_MIN_SCORE || 65)));
-const ANALYSIS_TIMEFRAMES = ["Day1","Hour8","Hour6","Hour4","Min60","Min15"];
+const ANALYSIS_TIMEFRAMES = ["Min15","Min60","Hour4","Day1","Hour6","Hour8"];
 const SR_LOOKBACK = Math.max(20, Number(process.env.SR_LOOKBACK || 50));
 const NEWS_RISK_ENABLED = String(process.env.NEWS_RISK_ENABLED ?? "true").toLowerCase() === "true";
 const NEWS_RISK_LOOKBACK_MINUTES = Math.max(15, Number(process.env.NEWS_RISK_LOOKBACK_MINUTES || 90));
@@ -156,21 +156,14 @@ const TRAILING_STOP_ENABLED =
 const TRAILING_TRIGGER_PCT = Math.max(0.025, Number(process.env.TRAILING_TRIGGER_PCT || 0.06));
 const TRAILING_STOP_PCT = Math.max(0.001, Number(process.env.TRAILING_STOP_PCT || 0.025));
 const MIN_STOP_DISTANCE_PCT = Math.max(0.0005, Number(process.env.MIN_STOP_DISTANCE_PCT || 0.001));
-// v34.8.1: POSITION COUNT IS NOT AN ENTRY BLOCKER BY DEFAULT.
-// The bot may hold multiple positions on different symbols. A same-symbol
-// position is still checked by preflight so the bot does not duplicate an
-// existing position/order on the same contract. Set POSITION_LIMIT_ENABLED=true
-// only if an operator explicitly wants a global position cap.
-const POSITION_LIMIT_ENABLED = String(process.env.POSITION_LIMIT_ENABLED ?? "false").toLowerCase() === "true";
-const MAX_OPEN_POSITIONS = Math.max(1, Number(process.env.MAX_OPEN_POSITIONS || 9999));
-const MAX_SAME_DIRECTION_POSITIONS = Math.max(1, Number(process.env.MAX_SAME_DIRECTION_POSITIONS || 9999));
-const MAX_PREFLIGHT_CANDIDATES = Math.max(5, Math.min(20, Number(process.env.MAX_PREFLIGHT_CANDIDATES || 15)));
+const MAX_OPEN_POSITIONS = Math.max(1, Number(process.env.MAX_OPEN_POSITIONS || (SMART_PULLBACK_PROFILE ? 1 : 3)));
+const MAX_SAME_DIRECTION_POSITIONS = Math.max(1, Number(process.env.MAX_SAME_DIRECTION_POSITIONS || (SMART_PULLBACK_PROFILE ? 1 : 2)));
 const MAX_TRADES_PER_DAY = Math.max(1, Number(process.env.MAX_TRADES_PER_DAY || 50));
-const ENTRY_COOLDOWN_MINUTES = 0; // No artificial time-based entry blocker; setup quality and live risk checks decide.
+const ENTRY_COOLDOWN_MINUTES = Math.max(0, Number(process.env.ENTRY_COOLDOWN_MINUTES || 20));
 const MAX_LOSS_STREAK = Math.max(1, Number(process.env.MAX_LOSS_STREAK || 3));
-const LOSS_STREAK_COOLDOWN_MINUTES = 0; // Loss streak is telemetry only; it must not freeze fresh valid entries.
+const LOSS_STREAK_COOLDOWN_MINUTES = Math.max(15, Number(process.env.LOSS_STREAK_COOLDOWN_MINUTES || 60));
 const VOLATILITY_SPIKE_ATR_MULTIPLIER = Math.max(1.5, Number(process.env.VOLATILITY_SPIKE_ATR_MULTIPLIER || 2.5));
-const LIQUIDITY_MIN_24H_USDT = Math.max(0, Number(process.env.LIQUIDITY_MIN_24H_USDT || 50000));
+const LIQUIDITY_MIN_24H_USDT = Math.max(0, Number(process.env.LIQUIDITY_MIN_24H_USDT || 150000));
 const MAX_SPREAD_PCT = Math.max(0.0001, Number(process.env.MAX_SPREAD_PCT || 0.003));
 // Entry-location protection: avoid chasing extended moves into nearby support/resistance.
 const ENTRY_SR_MIN_ROOM = Math.max(0.05, Math.min(0.35, Number(process.env.ENTRY_SR_MIN_ROOM || 0.08)));
@@ -182,14 +175,15 @@ const ENTRY_MAX_PULLBACK_DISTANCE_ATR = Math.max(0.25, Number(process.env.ENTRY_
 // Balanced pullback protection: allow strong setups from a meaningful >=0.30 ATR pullback, while S/R and anti-chase protections remain hard.
 const ENTRY_MIN_PULLBACK_DEPTH_ATR = Math.max(0.30, Number(process.env.ENTRY_MIN_PULLBACK_DEPTH_ATR || 0.30));
 const ENTRY_TRIGGER_MIN_PULLBACK_DEPTH_ATR = Math.max(0.25, Number(process.env.ENTRY_TRIGGER_MIN_PULLBACK_DEPTH_ATR || 0.30));
-// Entry-quality protection: prefer a recent pullback/retest and directional reclaim.
-// These are quality signals, not a mandatory 5m gate.
+// Strict trigger-quality protection: only enter after a very recent pullback
+// and a clear 5m reclaim candle. This reduces late/chasing entries.
 const ENTRY_TRIGGER_MAX_BARS = Math.max(2, Number(process.env.ENTRY_TRIGGER_MAX_BARS || (SMART_PULLBACK_PROFILE ? 10 : 20)));
 const ENTRY_TRIGGER_MAX_DISTANCE_ATR = Math.max(0.25, Number(process.env.ENTRY_TRIGGER_MAX_DISTANCE_ATR || (SMART_PULLBACK_PROFILE ? 1.75 : 1.75)));
 const ENTRY_TRIGGER_MIN_BODY_PCT = Math.max(0.10, Math.min(0.80, Number(process.env.ENTRY_TRIGGER_MIN_BODY_PCT || 0.15)));
 const ENTRY_TRIGGER_MAX_WICK_PCT = Math.max(0.15, Math.min(0.80, Number(process.env.ENTRY_TRIGGER_MAX_WICK_PCT || 0.75)));
-// Pullback/retest is preferred for entry quality; it must not become an artificial
-// blocker that prevents a valid 15m continuation setup from trading.
+// Hard pullback/retest entry protection. A high score alone can never create
+// a live order. The 15m setup must have a recent pullback and the 5m trigger
+// must reclaim that area in the intended direction.
 // v34.4.5: pullback/retest is never a hard entry blocker.
 // Anti-chase, extension, volatility, HTF alignment, score and RR checks remain active.
 const REQUIRE_PULLBACK_ENTRY = false;
@@ -223,7 +217,6 @@ let autoBusySince = 0;
 let lastAutoResult = null;
 let autoBusy = false;
 let lastTradeSignalCandle = new Map();
-let lastSuccessfulEntry = null;
 let tradeManagerBusy = false;
 let lastTradeManagerRun = null;
 let lastTradeManagerResult = null;
@@ -812,39 +805,6 @@ function candleQuality(c) {
   };
 }
 
-function wickDirectionalCheck(candle, direction, mode="entry") {
-  // Compare the candle's rejection wick against the opposite wick.
-  // LONG: prefer lower-tail rejection (buyers defended the dip).
-  // SHORT: prefer upper-tail rejection (sellers rejected the high).
-  // We only hard-reject a clearly contradictory wick; a clean breakout with
-  // a strong body is still allowed so this filter cannot freeze the scanner.
-  if (!candle || !["LONG","SHORT"].includes(direction)) {
-    return {pass:false, score:0, reason:"Missing candle for wick comparison"};
-  }
-  const body=Number(candle.bodyPct||0);
-  const upper=Number(candle.upperWickPct||0);
-  const lower=Number(candle.lowerWickPct||0);
-  const bullish=Boolean(candle.bullish);
-  const bearish=Boolean(candle.bearish);
-  const closeLocation=direction==="LONG" ? Number(candle.closeLocation ?? (1-upper)) : Number(candle.closeLocation ?? lower);
-  if (direction==="LONG") {
-    if (!bullish) return {pass:false, score:0, reason:"LONG candle is not bullish"};
-    const rejection = lower >= Math.max(0.12, upper*1.05);
-    const contradictory = upper >= 0.42 && upper > lower*1.45 && closeLocation < 0.55;
-    const cleanBody = body >= 0.62 && closeLocation >= 0.62;
-    const pass = rejection || cleanBody;
-    const score = Math.max(0, Math.min(100, 55 + (rejection?25:0) + (cleanBody?15:0) - (contradictory?45:0)));
-    return {pass:pass && !contradictory, score, upperWickPct:upper, lowerWickPct:lower, bodyPct:body, closeLocation, reason:contradictory?"LONG rejected: dominant upper wick":(rejection?"LONG lower-wick rejection confirmed":"LONG clean bullish body confirmed")};
-  }
-  if (!bearish) return {pass:false, score:0, reason:"SHORT candle is not bearish"};
-  const rejection = upper >= Math.max(0.12, lower*1.05);
-  const contradictory = lower >= 0.42 && lower > upper*1.45 && closeLocation > 0.45;
-  const cleanBody = body >= 0.62 && closeLocation <= 0.38;
-  const pass = rejection || cleanBody;
-  const score = Math.max(0, Math.min(100, 55 + (rejection?25:0) + (cleanBody?15:0) - (contradictory?45:0)));
-  return {pass:pass && !contradictory, score, upperWickPct:upper, lowerWickPct:lower, bodyPct:body, closeLocation, reason:contradictory?"SHORT rejected: dominant lower wick":(rejection?"SHORT upper-wick rejection confirmed":"SHORT clean bearish body confirmed")};
-}
-
 function trendStrength(direction, adxValue, slope21, slope50) {
   if (direction==="LONG") {
     return (adxValue ?? 0) + Math.max(0,(slope21 ?? 0))*100 + Math.max(0,(slope50 ?? 0))*50;
@@ -1028,222 +988,6 @@ function pullbackReclaimPass(analysis, direction, maxBars, minDepthAtr) {
 }
 
 
-// v34.6 STRICT ENTRY LOCATION ENGINE
-// A trade is allowed only after: confirmed 15m breakout -> pullback/retest ->
-// directional reclaim. This prevents entries at the top of a vertical pump
-// (LONG) or bottom of a dump (SHORT). The entry candle's wick is compared in
-// the requested direction before the order is allowed.
-function strict15mPullbackEntry(candles, direction) {
-  const closed = Array.isArray(candles) ? candles.slice(0, -1) : [];
-  if (closed.length < 25 || !["LONG", "SHORT"].includes(direction)) return null;
-  const current = closed[closed.length - 1];
-  const atr14 = num(atr(closed, 14));
-  if (!(atr14 > 0)) return null;
-
-  const maxBreakoutBarsAgo = Math.min(10, closed.length - 10);
-  for (let barsAgo = 1; barsAgo <= maxBreakoutBarsAgo; barsAgo++) {
-    const idx = closed.length - 1 - barsAgo;
-    if (idx < 10) continue;
-    const breakout = closed[idx];
-    const prior = closed.slice(idx - 10, idx);
-    if (prior.length < 10) continue;
-
-    const level = direction === "LONG"
-      ? Math.max(...prior.map(c => Number(c.high)))
-      : Math.min(...prior.map(c => Number(c.low)));
-    if (!(level > 0)) continue;
-
-    const bq = candleQuality(breakout);
-    const bRange = Math.max(1e-12, Number(breakout.high) - Number(breakout.low));
-    const bCloseLoc = direction === "LONG"
-      ? (Number(breakout.close) - Number(breakout.low)) / bRange
-      : (Number(breakout.high) - Number(breakout.close)) / bRange;
-    const priorVol = averageVolume(prior, Math.min(10, prior.length));
-    const volumeRatio = priorVol > 0 ? Number(breakout.volume || 0) / priorVol : 1;
-    const breakoutPass = direction === "LONG"
-      ? Number(breakout.close) > level * (1 + BREAKOUT_BUFFER_PCT) && bq.bullish
-      : Number(breakout.close) < level * (1 - BREAKOUT_BUFFER_PCT) && bq.bearish;
-    if (!breakoutPass) continue;
-    if (bq.bodyPct < 0.30 || bCloseLoc < 0.60) continue;
-    if (BREAKOUT_REQUIRE_VOLUME && volumeRatio < BREAKOUT_VOLUME_MULTIPLIER * 0.80) continue;
-
-    // The breakout candle itself is NEVER the entry candle. We require a
-    // later candle to return to the broken level before reclaiming it.
-    let retest = null;
-    for (let j = idx + 1; j < closed.length - 1; j++) {
-      const c = closed[j];
-      const touched = direction === "LONG"
-        ? Number(c.low) <= level * (1 + BREAKOUT_RETEST_TOLERANCE_PCT) && Number(c.low) >= level * (1 - 0.012)
-        : Number(c.high) >= level * (1 - BREAKOUT_RETEST_TOLERANCE_PCT) && Number(c.high) <= level * (1 + 0.012);
-      if (!touched) continue;
-      const rq = candleQuality(c);
-      const rRange = Math.max(1e-12, Number(c.high) - Number(c.low));
-      const rCloseLoc = direction === "LONG"
-        ? (Number(c.close) - Number(c.low)) / rRange
-        : (Number(c.high) - Number(c.close)) / rRange;
-      const rejection = direction === "LONG"
-        ? (rq.lowerWickPct >= Math.max(0.10, rq.upperWickPct * 1.05) || (rq.bullish && rCloseLoc >= 0.65))
-        : (rq.upperWickPct >= Math.max(0.10, rq.lowerWickPct * 1.05) || (rq.bearish && rCloseLoc >= 0.65));
-      if (!rejection) continue;
-      retest = {index:j, candle:c, extreme:direction === "LONG" ? Number(c.low) : Number(c.high)};
-    }
-    if (!retest) continue;
-
-    const cq = candleQuality(current);
-    const cRange = Math.max(1e-12, Number(current.high) - Number(current.low));
-    const closeLocation = direction === "LONG"
-      ? (Number(current.close) - Number(current.low)) / cRange
-      : (Number(current.high) - Number(current.close)) / cRange;
-    const wick = wickDirectionalCheck({
-      ...cq,
-      closeLocation
-    }, direction, "strict-pullback");
-    const reclaim = direction === "LONG"
-      ? Number(current.close) > level * (1 + ENTRY_PULLBACK_RECLAIM_BUFFER_PCT) && cq.bullish
-      : Number(current.close) < level * (1 - ENTRY_PULLBACK_RECLAIM_BUFFER_PCT) && cq.bearish;
-    if (!reclaim || !wick.pass) continue;
-    if (cq.bodyPct < 0.22 || closeLocation < 0.60) continue;
-
-    const extensionAtr = direction === "LONG"
-      ? Math.max(0, (Number(current.close) - level) / atr14)
-      : Math.max(0, (level - Number(current.close)) / atr14);
-    if (extensionAtr > 1.00) continue;
-
-    const depthAtr = direction === "LONG"
-      ? Math.max(0, (level - retest.extreme) / atr14)
-      : Math.max(0, (retest.extreme - level) / atr14);
-    if (depthAtr < 0.25) continue;
-
-    const swingWindow = closed.slice(Math.max(0, retest.index - 4), Math.min(closed.length, retest.index + 2));
-    const swingLow = Math.min(...swingWindow.map(c => Number(c.low)));
-    const swingHigh = Math.max(...swingWindow.map(c => Number(c.high)));
-    let score = 78;
-    if (volumeRatio >= BREAKOUT_VOLUME_MULTIPLIER) score += 6;
-    if (bq.bodyPct >= 0.50) score += 4;
-    if (closeLocation >= 0.80) score += 3;
-    if (wick.score >= 80) score += 5;
-    if (extensionAtr <= 0.50) score += 4;
-    score = Math.min(100, score);
-
-    return {
-      signal: direction,
-      direction,
-      score,
-      precisionScore: Math.min(100, score + (wick.score >= 85 ? 5 : 0)),
-      price: Number(current.close),
-      atr: atr14,
-      volumeRatio,
-      breakoutLevel: level,
-      extensionAtr,
-      bodyAtr: bq.bodyPct * (Number(breakout.high) - Number(breakout.low)) / atr14,
-      bodyPct: cq.bodyPct,
-      upperWickPct: cq.upperWickPct,
-      lowerWickPct: cq.lowerWickPct,
-      closeLocation,
-      candleTime: current.time,
-      breakoutCandleTime: breakout.time,
-      resistance: direction === "LONG" ? level : swingHigh,
-      support: direction === "SHORT" ? level : swingLow,
-      swingLow,
-      swingHigh,
-      pullbackLow: direction === "LONG" ? retest.extreme : null,
-      pullbackHigh: direction === "SHORT" ? retest.extreme : null,
-      pullbackDepthAtr: depthAtr,
-      retestConfirmed: true,
-      pullbackEntryPass: true,
-      confirmed: true,
-      wickCheck: wick,
-      entryMode: "15M_BREAKOUT_PULLBACK_RETEST",
-      reason: `${direction} 15m confirmed breakout → pullback/retest → wick rejection → reclaim`
-    };
-  }
-  return null;
-}
-
-
-// v34.8.1 BALANCED PULLBACK FALLBACK
-// The strict breakout-retest engine remains first choice. If no strict
-// breakout/retest exists, allow a genuine EMA pullback + directional wick
-// reclaim. This prevents the scanner from freezing while still avoiding
-// entries at the top/bottom of an extended move.
-function balanced15mPullbackWickEntry(candles, direction) {
-  const closed = Array.isArray(candles) ? candles.slice(0, -1) : [];
-  if (closed.length < 55 || !["LONG","SHORT"].includes(direction)) return null;
-  const current = closed[closed.length - 1];
-  const closes = closed.map(c => Number(c.close)).filter(Number.isFinite);
-  if (closes.length < 55) return null;
-  const ema21s = emaSeries(closes, 21);
-  const ema50s = emaSeries(closes, 50);
-  const ema21 = num(ema21s.at(-1)), ema50 = num(ema50s.at(-1));
-  const atr14 = num(atr(closed, 14));
-  if (!(ema21 > 0 && ema50 > 0 && atr14 > 0)) return null;
-
-  const q = candleQuality(current);
-  const range = Math.max(1e-12, Number(current.high)-Number(current.low));
-  const closeLocation = direction === "LONG"
-    ? (Number(current.close)-Number(current.low))/range
-    : (Number(current.high)-Number(current.close))/range;
-  const wick = wickDirectionalCheck({...q, closeLocation}, direction, "balanced-pullback");
-  if (!wick.pass) return null;
-
-  const level = direction === "LONG" ? Math.max(ema21, ema50) : Math.min(ema21, ema50);
-  const price = Number(current.close);
-  const distanceAtr = Math.abs(price-level)/atr14;
-  if (!(price > 0) || distanceAtr > 1.45) return null;
-
-  // Find a recent touch/rejection of EMA21/EMA50 in the previous 2-14 closed bars.
-  // The window is deliberately wider than v34.7 so a valid pullback is not
-  // missed merely because the reclaim happened a few candles later.
-  let touch = null;
-  const start = Math.max(0, closed.length-15);
-  for (let i=closed.length-2; i>=start; i--) {
-    const c=closed[i];
-    const hit21 = Number(c.low) <= ema21*1.006 && Number(c.high) >= ema21*0.994;
-    const hit50 = Number(c.low) <= ema50*1.006 && Number(c.high) >= ema50*0.994;
-    if (hit21 || hit50) { touch={index:i,candle:c}; break; }
-  }
-  if (!touch) return null;
-
-  const depthAtr = direction === "LONG"
-    ? Math.max(0, (Math.max(ema21,ema50)-Number(touch.candle.low))/atr14)
-    : Math.max(0, (Number(touch.candle.high)-Math.min(ema21,ema50))/atr14);
-  if (depthAtr < 0.12) return null;
-
-  const reclaim = direction === "LONG"
-    ? q.bullish && price > ema21*(1+ENTRY_PULLBACK_RECLAIM_BUFFER_PCT*0.50)
-    : q.bearish && price < ema21*(1-ENTRY_PULLBACK_RECLAIM_BUFFER_PCT*0.50);
-  if (!reclaim) return null;
-
-  const extensionAtr = direction === "LONG"
-    ? Math.max(0,(price-ema21)/atr14)
-    : Math.max(0,(ema21-price)/atr14);
-  if (extensionAtr > 1.45) return null;
-
-  let score=72;
-  if (depthAtr>=0.30) score+=6;
-  if (distanceAtr<=0.55) score+=5;
-  if (wick.score>=80) score+=7;
-  if (q.bodyPct>=0.35) score+=4;
-  if (closeLocation>=0.75) score+=4;
-  score=Math.min(100,score);
-
-  const swing = closed.slice(Math.max(0,touch.index-4), Math.min(closed.length,touch.index+2));
-  const swingLow=Math.min(...swing.map(c=>Number(c.low)));
-  const swingHigh=Math.max(...swing.map(c=>Number(c.high)));
-  return {
-    signal:direction,direction,score,precisionScore:Math.min(100,score+(wick.score>=85?5:0)),
-    price,atr:atr14,volumeRatio:1,breakoutLevel:level,extensionAtr,bodyAtr:q.bodyPct,
-    bodyPct:q.bodyPct,upperWickPct:q.upperWickPct,lowerWickPct:q.lowerWickPct,closeLocation,
-    candleTime:current.time,breakoutCandleTime:null,resistance:swingHigh,support:swingLow,
-    swingLow,swingHigh,pullbackLow:direction==='LONG'?Number(touch.candle.low):null,
-    pullbackHigh:direction==='SHORT'?Number(touch.candle.high):null,pullbackDepthAtr:depthAtr,
-    retestConfirmed:true,pullbackEntryPass:true,confirmed:true,wickCheck:wick,
-    entryMode:"15M_EMA_PULLBACK_WICK_RECLAIM",
-    reason:`${direction} 15m EMA pullback → wick rejection → reclaim`
-  };
-}
-
-
 function timeframeBias(candles) {
   if (!Array.isArray(candles) || candles.length < 60) return {bias:"NEUTRAL", price:null, ema9:null, ema21:null, ema50:null};
   const closes = candles.map(c => Number(c.close)).filter(Number.isFinite);
@@ -1265,8 +1009,7 @@ async function getAdvancedSignal(symbol=SYMBOL) {
   if (cached && Date.now() - cached.time < ADVANCED_SIGNAL_CACHE_TTL_MS) return cached.data;
 
   // HIGH-TIMEFRAME ENGINE: 1D + 8H + 6H + 4H set the directional majority;
-  // 1H confirms direction and 15m is the actual entry timeframe. 5m is never
-  // a mandatory gate, so a valid 15m setup cannot be blocked by a weak 5m candle.
+  // 1H/15m are conflict filters; confirmed 5m momentum/breakout is the primary entry trigger.
   const [c4h, c1h, c15, c5] = await Promise.all([getCandles(symbol,"Hour4"),getCandles(symbol,"Min60"),getCandles(symbol,"Min15"),getFastCandles(symbol)]);
   const c8h = aggregateCandles(c4h,480);
   const c6h = aggregateCandles(c4h,360);
@@ -1283,57 +1026,42 @@ async function getAdvancedSignal(symbol=SYMBOL) {
   const htfDirs=[bias1d.bias,bias8h.bias,bias6h.bias,bias4h.bias];
   const longCount=htfDirs.filter(x=>x==="LONG").length;
   const shortCount=htfDirs.filter(x=>x==="SHORT").length;
-  // v34.8 BALANCED HTF GATE: 2-of-4 is sufficient when the remaining
-  // confirmation layers do not contradict the direction. This prevents the
-  // scanner from becoming permanently silent when one higher timeframe is
-  // neutral/sideways. 1H remains a directional safety confirmation.
+  // Active-but-disciplined HTF gate: a 2-of-4 majority is enough. The 1H/15m
+  // layers are confirmation filters, not mandatory perfect alignment gates.
   const majorityDirection = longCount>=2 && longCount>shortCount ? "LONG" : (shortCount>=2 && shortCount>longCount ? "SHORT" : "NEUTRAL");
   const effectiveConsensus = majorityDirection!=="NEUTRAL"
-    ? {direction:majorityDirection,aligned:Math.max(longCount,shortCount),opposite:Math.min(longCount,shortCount),score:Math.max(longCount,shortCount),mode:"2_OF_4_BALANCED_MAJORITY"}
-    : {...consensus,mode:"2_OF_4_TIE_NEUTRAL"};
+    ? {direction:majorityDirection,aligned:Math.max(longCount,shortCount),opposite:Math.min(longCount,shortCount),score:Math.max(longCount,shortCount),mode:"2_OF_4_MAJORITY"}
+    : {...consensus,mode:"3_OF_4_STRICT"};
   const price = num(analysis15?.price ?? bias1h?.price ?? bias4h?.price);
   const direction = effectiveConsensus.direction;
   const fast5 = fastOpportunityScore(c5, marketStatsCache.stats[symbol] || {});
   let trigger = null;
 
-  // PRIMARY ENTRY: strict 15m breakout -> pullback/retest -> reclaim.
-  // Never enter on the breakout candle itself and never chase a vertical pump.
-  // 5m remains diagnostic only; it cannot flip or create a 15m direction.
-  if (direction !== "NEUTRAL") {
-    trigger = strict15mPullbackEntry(c15, direction);
-    // Do not freeze the bot when a strict breakout-retest is absent. A clean
-    // EMA pullback + directional wick + reclaim is a valid second-tier entry.
-    if (!trigger) trigger = balanced15mPullbackWickEntry(c15, direction);
+  // Primary entry trigger is the confirmed 5m momentum/breakout that the
+  // universe scanner already found. This prevents a valid 5m opportunity from
+  // being discarded merely because 15m is neutral during a pullback.
+  if (direction !== "NEUTRAL" && fast5?.signal === direction && Number(fast5.score||0) >= BREAKOUT_MIN_SCORE) {
+    trigger = fast5;
+  }
 
-    // v34.8.2 STRONG-15M FALLBACK: the full-universe scanner can already
-    // identify a very strong closed-15m opportunity (90/100+) while the
-    // stricter pullback/retest detector returns WAIT. Do not throw that
-    // opportunity away merely because the retest pattern was not encoded by
-    // the strict detector. The fallback still goes through all downstream
-    // safety checks (HTF alignment, 1H conflict, extension, S/R, wick,
-    // structure stop, RR, live preflight and risk gate).
-    if (!trigger) {
-      const fast15 = fastOpportunityScore(c15, marketStatsCache.stats[symbol] || {});
-      const fastScore = Number(fast15?.score || 0);
-      const fastDirection = String(fast15?.direction || '').toUpperCase();
-      if (fast15 && fastDirection === direction && fastScore >= 90) {
-        trigger = {
-          ...fast15,
-          signal: direction,
-          direction,
-          confirmed: true,
-          retestConfirmed: false,
-          pullbackEntryPass: false,
-          fallbackStrong15m: true,
-          entryMode: '15M_STRONG_CONTINUATION',
-          reason: `${direction} 15m strong continuation fallback (score ${fastScore}); strict pullback/retest not detected`
-        };
+  if (!trigger && direction !== "NEUTRAL" && analysis15?.direction !== (direction==="LONG"?"SHORT":"LONG")) {
+    const br = breakoutOpportunityFromCandles(c15);
+    if (br?.signal === direction) trigger = br;
+    else {
+      const q = analysis15.candle || {};
+      const extension = num(analysis15.distE21);
+      const bodyOk = Number(q.bodyPct||0) >= 0.30;
+      const closeOk = Number(q.closeLocation||0) >= 0.60;
+      const momentumOk = direction === "LONG" ? Number(analysis15.momentumSlope||0)>0 : Number(analysis15.momentumSlope||0)<0;
+      const volumeOk = analysis15.volumeRatio === null || Number(analysis15.volumeRatio)>=0.90;
+      if (bodyOk && closeOk && momentumOk && volumeOk && extension !== null && extension <= 1.50) {
+        trigger = {signal:direction,direction,score:82,precisionScore:82,price:Number(analysis15.price),atr:Number(analysis15.atr14),candleTime:analysis15.candleTime,breakoutLevel:direction==="LONG"?analysis15.resistance:analysis15.support,extensionAtr:extension,bodyAtr:Number(analysis15.rangeAtrRatio||0),bodyPct:Number(q.bodyPct||0),closeLocation:Number(q.closeLocation||0),volumeRatio:Number(analysis15.volumeRatio||0),swingLow:Number(analysis15.support),swingHigh:Number(analysis15.resistance),confirmed:true,volumePass:volumeOk,bodyPass:bodyOk,directionSpecificPass:true,retestConfirmed:false,pullbackEntryPass:false,entryMode:"15M_TREND_CONTINUATION",reason:`${direction} 15m continuation aligned with 1D/8H/6H/4H trend`};
       }
     }
   }
 
   if (!trigger || trigger.signal !== direction) {
-    const result={signal:"WAIT",reason:`No valid 15m entry setup aligned with ${direction==="NEUTRAL"?"HTF majority":direction}`,symbol,interval:"Min15",score:0,precisionScore:0,timeframes:{Day1:bias1d,Hour8:bias8h,Hour6:bias6h,Hour4:bias4h,Min60:bias1h,Min15:analysis15,Min5:fast5},higherTimeframeConsensus:effectiveConsensus};
+    const result={signal:"WAIT",reason:`No confirmed 5m momentum/breakout candidate aligned with ${direction==="NEUTRAL"?"HTF majority":direction}`,symbol,interval:"Min15",score:0,precisionScore:0,timeframes:{Day1:bias1d,Hour8:bias8h,Hour6:bias6h,Hour4:bias4h,Min60:bias1h,Min15:analysis15,Min5:fast5},higherTimeframeConsensus:effectiveConsensus};
     advancedSignalCache.set(symbol,{time:Date.now(),data:result});
     return result;
   }
@@ -1343,36 +1071,9 @@ async function getAdvancedSignal(symbol=SYMBOL) {
   const protectionPlan=protectionPricesFor(signal,price,null,analysis4h?.atr14||trigger.atr,structure);
   const stopPct=Number(protectionPlan?.stopPct||0);
   const riskReward=stopPct>0?TAKE_PROFIT_PCT/stopPct:0;
-  const lateEntryRisk=Number(trigger.extensionAtr||0)>3.25;
-  const volatilitySpike=Number(trigger.bodyAtr||0)>=3.50;
-
-  // SMART ENTRY LOCATION v34.5.1: do not chase a continuation candle
-  // directly into nearby resistance/support. This is NOT a global trade
-  // blocker: a real breakout/retest (or a confirmed breakout continuation
-  // already beyond the level) is still allowed. The purpose is only to stop
-  // entries like GIGGLEUSDT 38.69 when the 5m price was still below the
-  // 38.75 local ceiling. The scanner keeps running and can enter on the
-  // actual breakout/retest instead of missing the whole opportunity.
-  const localAtr=Math.max(1e-12, Number(analysis15?.atr14||trigger.atr||0));
-  const localResistance=num(analysis15?.resistance);
-  const localSupport=num(analysis15?.support);
-  const srRoomLong=localResistance!==null ? (localResistance-price)/localAtr : Infinity;
-  const srRoomShort=localSupport!==null ? (price-localSupport)/localAtr : Infinity;
-  const isBreakoutRetest=String(trigger.entryMode||'').toUpperCase()==='BREAKOUT_RETEST' || Boolean(trigger.retestConfirmed);
-  const isConfirmedBeyondLevel=signal==='LONG'
-    ? (num(trigger.breakoutLevel)!==null && price > Number(trigger.breakoutLevel)*(1+BREAKOUT_BUFFER_PCT))
-    : (num(trigger.breakoutLevel)!==null && price < Number(trigger.breakoutLevel)*(1-BREAKOUT_BUFFER_PCT));
-  const nearOpposingSR=(signal==='LONG' ? srRoomLong : srRoomShort) < 0.35;
-  const continuationOnly=!isBreakoutRetest && !isConfirmedBeyondLevel;
-  const lateLocationRisk=nearOpposingSR && continuationOnly;
-
+  const lateEntryRisk=Number(trigger.extensionAtr||0)>2.00;
+  const volatilitySpike=Number(trigger.bodyAtr||0)>=3.0;
   const stopDistanceOk=Boolean(protectionPlan?.valid&&stopPct>0&&stopPct<=MAX_STRUCTURE_STOP_PCT*1.02);
-  const wickCheck=wickDirectionalCheck(analysis15?.candle, signal, trigger.entryMode||"entry");
-  // At the top/bottom, demand the appropriate rejection wick. For a true
-  // breakout already beyond the level, a strong body is enough and wick is
-  // used as a quality score rather than a blocker.
-  const wickRequired = !isBreakoutRetest && !isConfirmedBeyondLevel;
-  const wickPass = wickRequired ? wickCheck.pass : (wickCheck.pass || Number(analysis15?.candle?.bodyPct||0)>=0.60);
   const coreAligned=effectiveConsensus.aligned>=2 && effectiveConsensus.direction===signal;
   const oneHourOpposite=bias1h.bias===(signal==="LONG"?"SHORT":"LONG");
   const oneHourPass=!oneHourOpposite;
@@ -1380,13 +1081,9 @@ async function getAdvancedSignal(symbol=SYMBOL) {
   const fifteenPass=analysis15.direction!== (signal==="LONG"?"SHORT":"LONG");
   let finalSignal=signal, reason=trigger.reason;
   if(!coreAligned){finalSignal="WAIT";reason=`Higher-timeframe majority too weak: 1D=${bias1d.bias}, 8H=${bias8h.bias}, 6H=${bias6h.bias}, 4H=${bias4h.bias}`;}
-  else if(!oneHourPass||!oneHourMomentumPass){finalSignal="WAIT";reason=`1H trend conflict for ${signal}`;}
+  else if(!oneHourPass||!oneHourMomentumPass||!fifteenPass){finalSignal="WAIT";reason=`1H/15m trend conflict for ${signal}`;}
   else if(volatilitySpike){finalSignal="WAIT";reason=`15m trigger candle volatility too high (${Number(trigger.bodyAtr).toFixed(2)} ATR)`;}
   else if(lateEntryRisk){finalSignal="WAIT";reason=`Entry too extended (${Number(trigger.extensionAtr).toFixed(2)} ATR)`;}
-  else if(lateLocationRisk){finalSignal="WAIT";reason=signal==='LONG'
-    ? `LONG waiting for breakout/retest above nearby resistance (${Number(localResistance).toFixed(6)})`
-    : `SHORT waiting for breakdown/retest below nearby support (${Number(localSupport).toFixed(6)})`; }
-  else if(!wickPass){finalSignal="WAIT";reason=wickCheck.reason || `${signal} candle wick does not confirm rejection`; }
   else if(!stopDistanceOk){finalSignal="WAIT";reason=protectionPlan?.reason||"Invalid higher-timeframe structure stop";}
   else if(riskReward<MIN_RISK_REWARD){finalSignal="WAIT";reason=`Risk/reward too low (${riskReward.toFixed(2)} < ${MIN_RISK_REWARD})`;}
   let score=60+effectiveConsensus.aligned*7;
@@ -1396,7 +1093,7 @@ async function getAdvancedSignal(symbol=SYMBOL) {
   if(trigger.confirmed)score+=5;
   score=Math.min(100,score);
   const precisionScore=Math.min(100,score+(Number(trigger.precisionScore||0)>=90?5:0));
-  const result={signal:finalSignal,reason,symbol,interval:"Min15",price,score,precisionScore,directionScores:{LONG:signal==="LONG"?score:0,SHORT:signal==="SHORT"?score:0},candleTime:trigger.candleTime,atr14:analysis15?.atr14||trigger.atr,rsi14:analysis15?.rsi14??null,reasons:[trigger.reason],breakout:{...trigger,higherTimeframeEntry:true},timeframes:{Day1:bias1d,Hour8:bias8h,Hour6:bias6h,Hour4:bias4h,Min60:bias1h,Min15:analysis15,Min5:fast5},higherTimeframeConsensus:effectiveConsensus,quality:{breakoutOnly:false,higherTimeframeOnly:true,no5mSignalEngine:true,strictPullbackRetest:false,strong15mFallback:Boolean(trigger?.fallbackStrong15m),coreTimeframeAlignmentPass:coreAligned,oneHourAlignmentPass:oneHourPass,fifteenMinuteConfirmationPass:fifteenPass,higherTimeframeAlignmentPass:coreAligned&&oneHourPass&&fifteenPass,dailyTrend:bias1d.bias,dailyAlignmentPass:bias1d.bias===signal,setupNotExhausted:!lateEntryRisk&&!lateLocationRisk,lateEntryRisk,lateLocationRisk,nearOpposingSR,localResistance,localSupport,srRoomAtr:Number((signal==='LONG'?srRoomLong:srRoomShort).toFixed(3)),isBreakoutRetest,isConfirmedBeyondLevel,volatilitySpike,riskReward:Number(riskReward.toFixed(3)),minRiskReward:MIN_RISK_REWARD,precisionScore,tpTargetPct:TAKE_PROFIT_PCT,tpReachableForTarget:true,entryMode:trigger.entryMode||"15M_TREND_CONTINUATION",wickCheck,wickRequired,wickPass,breakoutLevel:trigger.breakoutLevel,breakoutExtensionAtr:trigger.extensionAtr,breakoutVolumeRatio:trigger.volumeRatio,breakoutBodyAtr:trigger.bodyAtr},protectionPlan,higherTimeframe:{consensus,Day1:bias1d,Hour8:bias8h,Hour6:bias6h,Hour4:bias4h,Hour1:bias1h,Min15:analysis15}};
+  const result={signal:finalSignal,reason,symbol,interval:"Min15",price,score,precisionScore,directionScores:{LONG:signal==="LONG"?score:0,SHORT:signal==="SHORT"?score:0},candleTime:trigger.candleTime,atr14:analysis15?.atr14||trigger.atr,rsi14:analysis15?.rsi14??null,reasons:[trigger.reason],breakout:{...trigger,higherTimeframeEntry:true},timeframes:{Day1:bias1d,Hour8:bias8h,Hour6:bias6h,Hour4:bias4h,Min60:bias1h,Min15:analysis15,Min5:fast5},higherTimeframeConsensus:effectiveConsensus,quality:{breakoutOnly:false,higherTimeframeOnly:true,no5mSignalEngine:false,coreTimeframeAlignmentPass:coreAligned,oneHourAlignmentPass:oneHourPass,fifteenMinuteConfirmationPass:fifteenPass,higherTimeframeAlignmentPass:coreAligned&&oneHourPass&&fifteenPass,dailyTrend:bias1d.bias,dailyAlignmentPass:bias1d.bias===signal,setupNotExhausted:!lateEntryRisk,lateEntryRisk,volatilitySpike,riskReward:Number(riskReward.toFixed(3)),minRiskReward:MIN_RISK_REWARD,precisionScore,tpTargetPct:TAKE_PROFIT_PCT,tpReachableForTarget:true,entryMode:trigger.entryMode||"15M_TREND_CONTINUATION",breakoutLevel:trigger.breakoutLevel,breakoutExtensionAtr:trigger.extensionAtr,breakoutVolumeRatio:trigger.volumeRatio,breakoutBodyAtr:trigger.bodyAtr},protectionPlan,higherTimeframe:{consensus,Day1:bias1d,Hour8:bias8h,Hour6:bias6h,Hour4:bias4h,Hour1:bias1h,Min15:analysis15}};
   advancedSignalCache.set(symbol,{time:Date.now(),data:result});
   return result;
 }
@@ -2349,7 +2046,7 @@ function resetDailyRiskState() {
   loadPersistentState();
   const day=localDayKey();
   if(tradeRiskState.day!==day) {
-    tradeRiskState={day,tradesToday:0,lastEntryAt:0,lossStreak:0,lastClosedAt:0,lastObservedPositions:{},countedClosedPositions:{},startEquity:null,seeded:false,lastEntryAudit:tradeRiskState.lastEntryAudit||null};
+    tradeRiskState={day,tradesToday:0,lastEntryAt:0,lossStreak:0,lastClosedAt:0,lastObservedPositions:{},countedClosedPositions:{},startEquity:null,seeded:false};
     savePersistentState();
   }
   return tradeRiskState;
@@ -2369,20 +2066,21 @@ async function entryRiskGate(symbol, signal) {
   const direction = String(signal || "").toUpperCase();
   if (!["LONG","SHORT"].includes(direction)) return {ok:false,reason:`Invalid entry direction (${direction || "EMPTY"})`};
   if(tradeRiskState.tradesToday>=MAX_TRADES_PER_DAY) return {ok:false,reason:`Daily trade limit reached (${MAX_TRADES_PER_DAY})`};
-  // Loss streak is recorded for diagnostics, but it is NOT an entry blocker.
-  // A valid opposite-direction setup must remain tradable after a loss.
-  if (tradeRiskState.lossStreak >= MAX_LOSS_STREAK) {
-    tradeRiskState.lossStreak = 0;
+  if(tradeRiskState.lossStreak>=MAX_LOSS_STREAK) {
+    const elapsed=Date.now()-(tradeRiskState.lastClosedAt||0);
+    if(elapsed < LOSS_STREAK_COOLDOWN_MINUTES*60000) return {ok:false,reason:`Loss-streak protection active (${tradeRiskState.lossStreak} losses; ${LOSS_STREAK_COOLDOWN_MINUTES}m cooldown)`};
+    tradeRiskState.lossStreak=0;
     savePersistentState();
   }
   const openPositions=await getPositions();
   const open=openPositions.length;
-  // No artificial time-based entry cooldown. A fresh valid setup may trade immediately.
-  // Real position/risk limits below remain active.
-  const entryCooldownRemainingMs = 0;
+  // When no position is open, keep the existing entry cooldown.
+  // When a position is already open, a new independent signal may open another
+  // position, subject only to the existing max-position and same-direction limits.
+  if(open===0 && tradeRiskState.lastEntryAt && Date.now()-tradeRiskState.lastEntryAt<ENTRY_COOLDOWN_MINUTES*60000) return {ok:false,reason:`Entry cooldown active (${ENTRY_COOLDOWN_MINUTES}m)`};
+  if(open>=MAX_OPEN_POSITIONS) return {ok:false,reason:`Maximum open positions reached (${MAX_OPEN_POSITIONS})`};
   const sameDirection=openPositions.filter(p=>positionDirection(p)===direction).length;
-  if(POSITION_LIMIT_ENABLED && open>=MAX_OPEN_POSITIONS) return {ok:false,reason:`Maximum open positions reached (${MAX_OPEN_POSITIONS})`};
-  if(POSITION_LIMIT_ENABLED && sameDirection>=MAX_SAME_DIRECTION_POSITIONS) return {ok:false,reason:`Same-direction concentration limit reached (${MAX_SAME_DIRECTION_POSITIONS} ${direction})`};
+  if(sameDirection>=MAX_SAME_DIRECTION_POSITIONS) return {ok:false,reason:`Same-direction concentration limit reached (${MAX_SAME_DIRECTION_POSITIONS} ${direction})`};
 
   // v34.2-PRECISION: daily drawdown is telemetry only and never blocks a new
   // breakout entry. Per-trade SL/TP, loss-streak cooldown, position limits,
@@ -2408,9 +2106,7 @@ async function entryRiskGate(symbol, signal) {
   const atrPct=(sig?.atr14 && sig?.price) ? sig.atr14/sig.price : 0;
   if(atrPct>0.08) return {ok:false,reason:`Extreme volatility filter (ATR ${(atrPct*100).toFixed(2)}%)`};
   if(sig?.quality?.volatilitySpike) return {ok:false,reason:`Volatility spike filter (${VOLATILITY_SPIKE_ATR_MULTIPLIER}x ATR)`};
-  // getAdvancedSignal handles nearby S/R location. Keep only an extreme
-  // extension safety stop here so valid setups are not double-blocked.
-  if(Number(sig?.breakout?.extensionAtr||0)>2.75) return {ok:false,reason:sig.reason || "Extreme late entry extension"};
+  if(sig?.quality?.lateEntryRisk) return {ok:false,reason:sig.reason || "Late entry location filter"};
   if(!MANUAL_STOP_LOSS && Number(sig?.quality?.riskReward||0) < MIN_RISK_REWARD) return {ok:false,reason:`Risk/reward below minimum (${Number(sig?.quality?.riskReward||0).toFixed(2)} < ${MIN_RISK_REWARD})`};
   return {ok:true,openPositions:open,sameDirectionPositions:sameDirection,equity,signal};
 }
@@ -2773,28 +2469,11 @@ async function getFastCandles(symbol) {
   return candles;
 }
 
-
-async function getEntryScanCandles(symbol) {
-  const key = `${symbol}:ENTRY15`;
-  const ttl = 20 * 1000;
-  const cached = candleCache.get(key);
-  if (cached && Date.now() - cached.time < ttl) return cached.data;
-  const end = Date.now();
-  const bars = 140;
-  const start = end - (bars + 5) * 15 * 60 * 1000;
-  const data = await mexc("GET", "/api/v1/contract/kline/" + symbol, {
-    interval:"Min15", start:Math.floor(start/1000), end:Math.floor(end/1000)
-  });
-  const candles = normalizeCandles(data).sort((a,b)=>a.time-b.time);
-  candleCache.set(key,{time:Date.now(),data:candles});
-  return candles;
-}
-
 async function fullUniverseFastScan(symbols) {
   const rows = await mapWithConcurrency(symbols, FAST_SCAN_CONCURRENCY, async symbol => {
-    const candles = await getEntryScanCandles(symbol);
+    const candles = await getFastCandles(symbol);
     const fast = fastOpportunityScore(candles, marketStatsCache.stats[symbol] || {});
-    if (!fast) return {symbol,signal:"WAIT",score:0,reason:"insufficient 15m data"};
+    if (!fast) return {symbol,signal:"WAIT",score:0,reason:"insufficient 5m data"};
     return {symbol,signal:fast.direction,score:fast.score,fast};
   });
   return rows.filter(Boolean);
@@ -2802,7 +2481,7 @@ async function fullUniverseFastScan(symbols) {
 
 async function selectDeepCandidates(symbols) {
   // Full-universe opportunity discovery happens every cycle. Only the most
-  // promising 15m structures are promoted to expensive multi-timeframe analysis.
+  // promising 5m structures are promoted to expensive multi-timeframe analysis.
   // This prevents a 1068-symbol universe from becoming a serial 5000+ request
   // bottleneck while still giving every active symbol a chance to surface.
   const fastRows = await fullUniverseFastScan(symbols);
@@ -2857,19 +2536,15 @@ async function autoTradeOnce() {
     );
     if(managementBlocked) return {skipped:true,reason:"Trade manager protection error; new entry blocked",management};
 
-    const currentPositions = (await getPositions()).filter(p=>positionVolume(p)>0).map(p=>({
-      symbol:p?.symbol||null,positionId:positionIdOf(p),direction:positionDirection(p),
-      entryPrice:num(p?.openAvgPrice??p?.openAvgPx??p?.avgPrice??p?.entryPrice),volume:positionVolume(p)
-    }));
-    const open=currentPositions.length;
-    if(POSITION_LIMIT_ENABLED && open>=MAX_OPEN_POSITIONS) return {skipped:true,reason:`Maximum open positions reached (${MAX_OPEN_POSITIONS})`,management,currentPositions,lastSuccessfulEntry:lastSuccessfulEntry||tradeRiskState.lastEntryAudit||null};
+    const open=await openPositionCount();
+    if(open>=MAX_OPEN_POSITIONS) return {skipped:true,reason:`Maximum open positions reached (${MAX_OPEN_POSITIONS})`,management};
 
     const symbols=await selectScanSymbols();
     const checked=[];
 
     // Full-universe fast discovery: every active USDT perpetual gets a fresh
-    // 15m opportunity check on every cycle. Only the strongest structures are
-    // promoted to the multi-timeframe confirmation engine.
+    // 5m opportunity check on every cycle. Only the strongest structures are
+    // promoted to the expensive 5m/15m/30m/1h/4h confirmation engine.
     const fastScan = await selectDeepCandidates(symbols);
     const candidates=[];
     const signalCacheForCycle=new Map();
@@ -2938,9 +2613,9 @@ async function autoTradeOnce() {
       };
     });
 
-    // The strongest candidates reach live preflight/risk gate. A wider bounded set prevents one blocked/manual-position symbol from suppressing the next valid trade.
+    // Only the strongest candidates reach the expensive live preflight/risk gate.
     const preflightFailures=[];
-    for(const candidate of candidates.slice(0,MAX_PREFLIGHT_CANDIDATES)){
+    for(const candidate of candidates.slice(0,5)){
       try{
         const pf=await preflight(candidate.symbol);
         const signal=pf.signal;
@@ -2982,27 +2657,13 @@ async function autoTradeOnce() {
         const result=await placeMarketOrder(candidate.symbol,signal.signal);
         if(result?.success){
           lastTradeSignalCandle.set(candidate.symbol,candleKey);
-          const entryAudit={
-            time:new Date().toISOString(),symbol:candidate.symbol,direction:signal.signal,
-            signalCandleTime:signal.candleTime,entryMode:signal?.quality?.entryMode||signal?.breakout?.entryMode||signal?.breakout?.entryMode||"UNKNOWN",
-            score:signal.score,precisionScore:signal.precisionScore,reason:signal.reason,
-            higherTimeframeConsensus:signal.higherTimeframeConsensus||null,
-            wickCheck:signal?.quality?.wickCheck||signal?.breakout?.wickCheck||null,
-            breakoutLevel:signal?.quality?.breakoutLevel??signal?.breakout?.breakoutLevel??null,
-            entryPrice:result.entryPrice??result.position?.openAvgPrice??null,
-            stopLossPrice:result.stopLossPrice??null,takeProfitPrice:result.takeProfitPrice??null,
-            protected:Boolean(result.protected)
-          };
-          lastSuccessfulEntry=entryAudit;
           resetDailyRiskState();
           tradeRiskState.tradesToday+=1;
           tradeRiskState.lastEntryAt=Date.now();
-          tradeRiskState.lastEntryAudit=entryAudit;
           savePersistentState();
         }
         return {
           traded:true,symbol:candidate.symbol,direction:signal.signal,
-          entryAudit:lastSuccessfulEntry,
           candleTime:signal.candleTime,score:signal.score,
           universeSymbols:ALLOWED_SYMBOLS.length,scanBatchSize:SCAN_BATCH_SIZE,scanCycle,
           fastScannedSymbols:fastScan.fastRows.filter(x=>!x?.error).length,fastScanErrorCount:fastScan.errorCount||0,fastScanErrorSamples:fastScan.errorSamples||[],deepScannedSymbols:fastScan.top.length,
@@ -3018,8 +2679,8 @@ async function autoTradeOnce() {
     const topRows=candidates.slice(0,5).map(c=>checked.find(x=>x.symbol===c.symbol)||c);
     return {
       skipped:true,
-      reason:candidates.length ? "Top 15m quality signals failed final preflight/risk gate" : "No quality 15m entry candidate passed the scanner",
-      preflightFailures:preflightFailures.slice(0,MAX_PREFLIGHT_CANDIDATES),
+      reason:candidates.length ? "Top quality signals failed final preflight/risk gate" : "No quality 5m momentum/breakout candidate passed the scanner",
+      preflightFailures:preflightFailures.slice(0,5),
       scannedSymbols:symbols.length,
       universeSymbols:ALLOWED_SYMBOLS.length,
       scanBatchSize:SCAN_BATCH_SIZE,
@@ -3032,8 +2693,6 @@ async function autoTradeOnce() {
       topCandidateChecks:topRows,
       top3Diagnostic,
       checked,
-      currentPositions,
-      lastSuccessfulEntry:lastSuccessfulEntry||tradeRiskState.lastEntryAudit||null,
       management
     };
   }catch(e){
@@ -3047,7 +2706,7 @@ async function autoTradeOnce() {
 
 app.get("/", (req,res) => res.json({
   service:"mexc-futures-trading-bot",
-  version:"34.8.1-unlimited-position-scan",
+  version:"34.4.2-no-pullback-quality",
   symbol:SYMBOL,
   realTradingEnabled:REAL_TRADING_ENABLED,
   autoTradingEnabled:AUTO_TRADING_ENABLED
@@ -3055,7 +2714,7 @@ app.get("/", (req,res) => res.json({
 
 app.get("/health", (req,res) => res.json({
   success:true,
-  version:"34.8.1-unlimited-position-scan",
+  version:"34.4.2-no-pullback-quality",
   credentialsConfigured:!!(ACCESS_KEY && SECRET_KEY),
   realTradingEnabled:REAL_TRADING_ENABLED,
   autoTradingEnabled:AUTO_TRADING_ENABLED,
@@ -3069,16 +2728,12 @@ app.get("/health", (req,res) => res.json({
   allowedSymbols:ALLOWED_SYMBOLS,
   minSignalScore:MIN_SIGNAL_SCORE, minScoreEdge:MIN_SCORE_EDGE, scanSymbols:SCAN_SYMBOLS,
   adaptiveOrderSize:ADAPTIVE_ORDER_SIZE, orderBalanceReserveUSDT:ORDER_BALANCE_RESERVE_USDT,
-  analysisTimeframes:ANALYSIS_TIMEFRAMES, breakoutOnly:false, positionMode:CONFIGURED_POSITION_MODE, openType:CONFIGURED_OPEN_TYPE,
+  analysisTimeframes:ANALYSIS_TIMEFRAMES, breakoutOnly:true, positionMode:CONFIGURED_POSITION_MODE, openType:CONFIGURED_OPEN_TYPE,
   symbolLimit:SYMBOL_LIMIT,
   tradingSymbols:CORE_SYMBOLS,
   newsRiskEnabled:NEWS_RISK_ENABLED,
-  positionLimitEnabled:POSITION_LIMIT_ENABLED,
-    positionLimitEnabled:POSITION_LIMIT_ENABLED,
-    maxOpenPositions:MAX_OPEN_POSITIONS,
+  maxOpenPositions:MAX_OPEN_POSITIONS,
     maxSameDirectionPositions:MAX_SAME_DIRECTION_POSITIONS,
-    maxPreflightCandidates:MAX_PREFLIGHT_CANDIDATES,
-    maxPreflightCandidates:MAX_PREFLIGHT_CANDIDATES,
   maxTradesPerDay:MAX_TRADES_PER_DAY,
   dailyDrawdownProtectionEnabled:false,
   liquidityMin24hUSDT:LIQUIDITY_MIN_24H_USDT,
@@ -3240,7 +2895,7 @@ app.get("/api/news-risk", async (req,res) => {
 
 app.get("/api/config", (req,res) => res.json({
   success:true,
-  version:"34.8.1-unlimited-position-scan",
+  version:"34.4.2-no-pullback-quality",
   defaults:{
     maxOrderUSDT:MAX_ORDER_USDT,
   adaptiveOrderSize:ADAPTIVE_ORDER_SIZE,
@@ -3273,7 +2928,7 @@ app.get("/api/config", (req,res) => res.json({
     minStopDistancePct:MIN_STOP_DISTANCE_PCT,
     minSignalScore:MIN_SIGNAL_SCORE, minScoreEdge:MIN_SCORE_EDGE, scanSymbols:SCAN_SYMBOLS,
   adaptiveOrderSize:ADAPTIVE_ORDER_SIZE, orderBalanceReserveUSDT:ORDER_BALANCE_RESERVE_USDT,
-    analysisTimeframes:ANALYSIS_TIMEFRAMES, breakoutOnly:false, positionMode:CONFIGURED_POSITION_MODE, openType:CONFIGURED_OPEN_TYPE,
+    analysisTimeframes:ANALYSIS_TIMEFRAMES, breakoutOnly:true, positionMode:CONFIGURED_POSITION_MODE, openType:CONFIGURED_OPEN_TYPE,
     volumeMultiplier:VOLUME_MULTIPLIER,
     adxMin:ADX_MIN,
     supportResistanceLookback:SR_LOOKBACK,
@@ -3281,12 +2936,8 @@ app.get("/api/config", (req,res) => res.json({
   tradingSymbols:CORE_SYMBOLS,
     newsRiskEnabled:NEWS_RISK_ENABLED,
     newsRiskLookbackMinutes:NEWS_RISK_LOOKBACK_MINUTES,
-    positionLimitEnabled:POSITION_LIMIT_ENABLED,
-    positionLimitEnabled:POSITION_LIMIT_ENABLED,
     maxOpenPositions:MAX_OPEN_POSITIONS,
     maxSameDirectionPositions:MAX_SAME_DIRECTION_POSITIONS,
-    maxPreflightCandidates:MAX_PREFLIGHT_CANDIDATES,
-    maxPreflightCandidates:MAX_PREFLIGHT_CANDIDATES,
     maxTradesPerDay:MAX_TRADES_PER_DAY,
     entryCooldownMinutes:ENTRY_COOLDOWN_MINUTES,
     maxLossStreak:MAX_LOSS_STREAK,
@@ -3309,7 +2960,7 @@ app.get("/api/config", (req,res) => res.json({
   allowedSymbols:ALLOWED_SYMBOLS,
   realTradingEnabled:REAL_TRADING_ENABLED,
   autoTradingEnabled:AUTO_TRADING_ENABLED,
-  safetyNote:"LIVE ENTRY: 1D/8H/6H/4H determine the main direction, 1H confirms it, and 15m is the entry timeframe. 5m is diagnostic only and never a mandatory entry gate; there is no artificial time cooldown. Candle wick rejection is compared for LONG/SHORT entries, while strong confirmed breakouts can still pass without a large wick. Direction is locked at preflight and order time. Structure SL uses swing + ATR buffer with 1%-3% distance bounds. No stop-hit probability or profit percentage is guaranteed.",
+  safetyNote:"LIVE ENTRY: preferred confirmed closed 5m breakout/retest; if no breakout candidate exists, a closed 5m momentum fallback may qualify, but 15m/1h/1D conflict and final risk gates still block entries. Direction is locked at preflight and order time. Structure SL uses swing + ATR buffer with 1%-3% distance bounds. No stop-hit probability or profit percentage is guaranteed.",
   targetFirstMode:true,
   symbolUniverse:{source:symbolUniverseCache.source, updatedAt:symbolUniverseCache.time ? new Date(symbolUniverseCache.time).toISOString() : null, count:ALLOWED_SYMBOLS.length, targetCount:null, scanBatchSize:SCAN_BATCH_SIZE, scanCycle, removedFromCoreSymbols:symbolUniverseCache.removed, marketRanked:symbolUniverseCache.marketRanked}
 }));
@@ -3360,7 +3011,6 @@ app.get("/api/auto-status", (req,res) => res.json({
   busyAgeMs:autoBusySince ? Math.max(0,Date.now()-autoBusySince) : 0,
   autoRunStaleMs:AUTO_RUN_STALE_MS,
   lastTradeSignalCandle:Object.fromEntries(lastTradeSignalCandle),
-  lastSuccessfulEntry:lastSuccessfulEntry||tradeRiskState.lastEntryAudit||null,
   riskState:resetDailyRiskState()
 }));
 
@@ -3502,7 +3152,7 @@ loadPersistentState();
 resetDailyRiskState();
 
 app.listen(PORT, () => {
-  console.log(`MEXC Futures Bot v34.7-balanced-pullback-wick-audit listening on ${PORT}`);
+  console.log(`MEXC Futures Bot v34.3.7-1D-breakout-momentum-fallback listening on ${PORT}`);
   console.log(`Real trading: ${REAL_TRADING_ENABLED}`);
   console.log(`Auto trading: ${AUTO_TRADING_ENABLED}`);
   console.log("SCAN SETTINGS", JSON.stringify({scanBatchSize:SCAN_BATCH_SIZE, universeMin24hUSDT:UNIVERSE_MIN_24H_USDT, universeRefreshMs:SYMBOL_UNIVERSE_TTL_MS}));
