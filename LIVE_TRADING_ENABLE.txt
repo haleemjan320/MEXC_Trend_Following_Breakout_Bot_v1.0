@@ -1,0 +1,23 @@
+LIVE TRADING ENABLEMENT (Railway)
+
+The ZIP is configured with live execution OFF by default. To opt in after reviewing and testing:
+1. Add MEXC_ACCESS_KEY and MEXC_SECRET_KEY as Railway Variables. Use a dedicated API key with Futures trading permission only; do NOT enable withdrawals.
+2. Add a long random BOT_ADMIN_TOKEN.
+3. Set REAL_TRADING_ENABLED=true and AUTO_TRADING_ENABLED=true.
+4. Confirm the MEXC Futures account is in Hedge mode and the contract margin mode is Isolated. The bot refuses entries if the exchange reports a different mode.
+5. Keep the account funded only with money you can afford to lose. Start with a small balance and monitor logs.
+
+Hard-coded safety caps in this build:
+- maximum 10x leverage
+- isolated margin and Hedge position mode only
+- 2% price-distance Stop Loss and 3% initial Take Profit (adaptive extension capped at 6%)
+- maximum estimated stop-loss risk 1% of current USDT equity per trade
+- block new entries when daily equity drawdown reaches 10%
+- maximum 5 open positions
+- no second open position/order/plan on the same symbol
+
+Important:
+- Live trading is not activated merely by uploading this ZIP. Railway environment variables must be set explicitly.
+- The 1% figure is a planned loss at the stop price, not a guarantee. Slippage, gaps, fees, funding, exchange outages, and rejected stop orders can cause larger losses.
+- The bot keeps managing existing positions after the daily loss lock; it blocks new entries. Check the MEXC account and Railway logs after deployment.
+- Never paste API keys or secrets into chat or commit them to GitHub.

@@ -1,0 +1,5 @@
+.env
+.env.*.local
+bot-state-*.json
+*.log
+node_modules/
